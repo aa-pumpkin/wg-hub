@@ -1,0 +1,14 @@
+node_modules/
+dist/
+dev-dist/
+.env
+.env.*
+!.env.example
+*.log
+coverage/
+.DS_Store
+e2e/shots/
+e2e/*.png
+.tools/
+WG-Hub.apk
+backups/

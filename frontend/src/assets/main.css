@@ -1,0 +1,271 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --subtle: #f4f4f2;
+  --fg: #1c1917;
+  --muted: #6f6a65;
+  --line: #e8e6e3;
+  --accent: #2f6f5e;
+  --accent-hover: #285f50;
+  --accent-fg: #ffffff;
+  --accent-soft: #e4f1ec;
+  --accent-text: #27604f;
+  --danger: #b83f36;
+  --danger-soft: #fbeae8;
+  --warn: #9a6512;
+  --warn-soft: #fbf1dd;
+
+  --note-default: #ffffff;
+  --note-yellow: #fdf5d3;
+  --note-green: #e3f3e6;
+  --note-blue: #e2eefb;
+  --note-pink: #fbe7ec;
+  --note-lilac: #eeeafb;
+
+  --avatar-sage: #d7eadf;
+  --avatar-sky: #d6e8f8;
+  --avatar-rose: #f8dbe2;
+  --avatar-amber: #f9e8c4;
+  --avatar-lilac: #e4dff8;
+  --avatar-teal: #cdecea;
+  --avatar-fg: #2b2a28;
+
+  --shadow-soft: 0 1px 2px rgb(28 25 23 / 0.04), 0 1px 1px rgb(28 25 23 / 0.02);
+  --shadow-pop: 0 8px 28px rgb(28 25 23 / 0.14);
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #161615;
+  --surface: #1e1e1c;
+  --subtle: #282826;
+  --fg: #f3f2f0;
+  --muted: #a5a19b;
+  --line: #2f2f2c;
+  --accent: #7cc4ae;
+  --accent-hover: #93d1be;
+  --accent-fg: #10231d;
+  --accent-soft: #20342d;
+  --accent-text: #8fd0bc;
+  --danger: #ec8a81;
+  --danger-soft: #3a2220;
+  --warn: #e4b768;
+  --warn-soft: #362c18;
+
+  --note-default: #1e1e1c;
+  --note-yellow: #35301a;
+  --note-green: #1e3123;
+  --note-blue: #1c2c3d;
+  --note-pink: #3a2329;
+  --note-lilac: #2b2640;
+
+  --avatar-sage: #3b5a4a;
+  --avatar-sky: #35506b;
+  --avatar-rose: #6a3f4b;
+  --avatar-amber: #66522a;
+  --avatar-lilac: #4d4574;
+  --avatar-teal: #2d5a58;
+  --avatar-fg: #f3f2f0;
+
+  --shadow-soft: none;
+  --shadow-pop: 0 8px 28px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  [role='button'],
+  summary {
+    cursor: pointer;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* iOS zooms into inputs below 16px. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+  @media (min-width: 768px) {
+    input,
+    select,
+    textarea {
+      font-size: 14px;
+    }
+  }
+}
+
+@layer components {
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    box-shadow: var(--shadow-soft);
+  }
+  .input {
+    width: 100%;
+    min-height: 42px;
+    padding: 8px 12px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    color: var(--fg);
+    transition: border-color 120ms;
+  }
+  .input::placeholder {
+    color: var(--muted);
+  }
+  .input:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .input[aria-invalid='true'] {
+    border-color: var(--danger);
+  }
+  .list-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 52px;
+    padding: 6px 16px;
+  }
+  .list-row > button.tap[aria-label]:first-child {
+    margin-left: -10px;
+  }
+  .list-row > button.tap[aria-label]:last-child,
+  .list-row > .row-end:last-child {
+    margin-right: -12px;
+  }
+  @media (min-width: 768px) {
+    .list-row > button.tap[aria-label]:first-child {
+      margin-left: -6px;
+    }
+    .list-row > button.tap[aria-label]:last-child,
+    .list-row > .row-end:last-child {
+      margin-right: -8px;
+    }
+  }
+  .section-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+  .tap {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  @media (min-width: 768px) {
+    .tap {
+      min-height: 36px;
+      min-width: 36px;
+    }
+  }
+}
+
+/* Native dialog: centered on desktop, bottom sheet on phones. */
+dialog.modal {
+  margin: auto;
+  width: min(100% - 2rem, 30rem);
+  max-height: min(90dvh, 44rem);
+  padding: 0;
+  background: var(--surface);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-pop);
+}
+dialog.modal[open] {
+  display: flex;
+  flex-direction: column;
+  animation: modal-in 160ms ease-out;
+}
+dialog.modal::backdrop {
+  background: rgb(20 18 16 / 0.4);
+}
+@media (max-width: 767px) {
+  dialog.modal {
+    margin: auto 0 0;
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    border-radius: 18px 18px 0 0;
+    border-width: 1px 0 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  dialog.modal[open] {
+    animation: sheet-in 200ms ease-out;
+  }
+}
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+@keyframes sheet-in {
+  from {
+    transform: translateY(40px);
+    opacity: 0.4;
+  }
+}
+
+.skeleton {
+  background: var(--subtle);
+  border-radius: 8px;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  dialog.modal::backdrop {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

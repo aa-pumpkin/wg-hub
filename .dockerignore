@@ -1,0 +1,11 @@
+**/node_modules
+**/dist
+**/dev-dist
+e2e
+**/.env
+.git
+docs
+*.md
+.tools
+mobile
+backups

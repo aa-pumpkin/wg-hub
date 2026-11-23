@@ -1,0 +1,6 @@
+# Publishes the database to the host for local development and tests:
+#   npm run db:up
+services:
+  db:
+    ports:
+      - "${DB_PORT:-5432}:5432"

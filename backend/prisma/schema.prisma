@@ -1,0 +1,488 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+/// MAIN tasks are weekly and go around the household's circle together.
+/// EXTRA tasks have their own schedule and people.
+enum ChoreKind {
+  MAIN
+  EXTRA
+}
+
+enum Recurrence {
+  NONE
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum ChoreCategory {
+  KITCHEN
+  BATHROOM
+  TRASH
+  FLOORS
+  LAUNDRY
+  OTHER
+}
+
+enum AssignmentStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+enum ShoppingCategory {
+  PRODUCE
+  DAIRY
+  MEAT
+  BAKERY
+  PANTRY
+  FROZEN
+  DRINKS
+  HOUSEHOLD
+  HYGIENE
+  OTHER
+}
+
+enum ShoppingStatus {
+  PENDING
+  BOUGHT
+}
+
+enum EventCategory {
+  CHORE
+  WG
+  OTHER
+}
+
+enum NoteColor {
+  DEFAULT
+  YELLOW
+  GREEN
+  BLUE
+  PINK
+  LILAC
+}
+
+enum SettlementKind {
+  PAYMENT
+  FORGIVEN
+  BEER
+}
+
+enum SplitMode {
+  EQUAL
+  CUSTOM
+}
+
+model User {
+  id           String   @id @default(cuid())
+  /// Login name, stored lowercase. There is deliberately no email address.
+  username     String   @unique
+  passwordHash String
+  displayName  String
+  avatarColor  String   @default("sage")
+  locale       String   @default("de")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  sessions           Session[]
+  passwordResets     PasswordResetToken[] @relation("ResetFor")
+  resetsCreated      PasswordResetToken[] @relation("ResetBy")
+  memberships        HouseholdMember[]
+  invitationsCreated HouseholdInvitation[]
+  choresCreated      Chore[]
+  rotations          ChoreRotationMember[]
+  assignments        ChoreAssignment[]
+  completions        ChoreCompletion[]
+  shoppingCreated    ShoppingItem[]         @relation("ShoppingCreatedBy")
+  shoppingBought     ShoppingItem[]         @relation("ShoppingBoughtBy")
+  eventsCreated      CalendarEvent[]
+  eventParticipation CalendarEventParticipant[]
+  notes              Note[]
+  expensesPaid       Expense[]              @relation("ExpensePaidBy")
+  expensesCreated    Expense[]              @relation("ExpenseCreatedBy")
+  expenseShares      ExpenseParticipant[]
+  settlementsPaid    ExpenseSettlement[]    @relation("SettlementFrom")
+  settlementsGot     ExpenseSettlement[]    @relation("SettlementTo")
+  settlementsCreated ExpenseSettlement[]    @relation("SettlementCreatedBy")
+  beerOwed           BeerRequest[]          @relation("BeerFrom")
+  beerDemanded       BeerRequest[]          @relation("BeerTo")
+  dishwasherEntries  DishwasherEntry[]
+  dishwasherCrowns   DishwasherCycle[]
+  dishwasherStrikes  DishwasherStrike[]
+}
+
+/// One-time link created by a WG admin for a member who forgot their password.
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  tokenHash   String    @unique
+  userId      String
+  createdById String
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  user      User @relation("ResetFor", fields: [userId], references: [id], onDelete: Cascade)
+  createdBy User @relation("ResetBy", fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// The cookie holds a random token; only its SHA-256 is stored.
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Household {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  icon      String   @default("🏠")
+  timezone  String   @default("Europe/Berlin")
+  /// Monday of week 0 of the main task circle. Moving it shifts the whole circle.
+  rotationAnchor DateTime? @db.Date
+  /// What one beer is worth when a debt is paid back in beer.
+  beerPriceCents Int      @default(150)
+  /// Dishwasher counter: magnets needed for the crown. Null means the WG does not use it.
+  dishwasherTarget     Int?
+  dishwasherCycle      Int       @default(1)
+  dishwasherCycleStart DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members     HouseholdMember[]
+  invitations HouseholdInvitation[]
+  chores      Chore[]
+  assignments ChoreAssignment[]
+  shopping    ShoppingItem[]
+  events      CalendarEvent[]
+  notes       Note[]
+  expenses    Expense[]
+  settlements ExpenseSettlement[]
+  beerRequests BeerRequest[]
+  dishwasherEntries DishwasherEntry[]
+  dishwasherCycles  DishwasherCycle[]
+}
+
+model HouseholdMember {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  role        Role     @default(MEMBER)
+  /// Place in the clockwise circle for main tasks.
+  rotationPosition Int?
+  /// Set while someone is away: they get no tasks, but keep their seat in the circle.
+  frozenAt    DateTime?
+  joinedAt    DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([householdId, userId])
+  @@index([userId])
+}
+
+model HouseholdInvitation {
+  id          String    @id @default(cuid())
+  householdId String
+  code        String    @unique
+  createdById String
+  expiresAt   DateTime?
+  revokedAt   DateTime?
+  useCount    Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User      @relation(fields: [createdById], references: [id])
+
+  @@index([householdId])
+}
+
+/// A chore definition: a one-off task or a recurring series.
+/// The single due dates live in ChoreAssignment, so completing one of them
+/// can never touch the rest of the series.
+model Chore {
+  id             String        @id @default(cuid())
+  householdId    String
+  title          String
+  description    String?
+  category       ChoreCategory @default(OTHER)
+  kind           ChoreKind     @default(EXTRA)
+  /// Points for doing it on time.
+  points         Int           @default(0)
+  /// Order of main tasks within the circle.
+  position       Int           @default(0)
+  recurrence     Recurrence    @default(NONE)
+  /// First due date, as a calendar date in the household's time zone.
+  startDate      DateTime      @db.Date
+  /// Assignments exist up to this date; used to generate more on demand.
+  generatedUntil DateTime?     @db.Date
+  archivedAt     DateTime?
+  createdById    String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  household   Household             @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy   User                  @relation(fields: [createdById], references: [id])
+  rotation    ChoreRotationMember[]
+  assignments ChoreAssignment[]
+
+  @@index([householdId, archivedAt])
+}
+
+/// Ordered list of people responsible for a chore. One person = fixed owner,
+/// several = automatic rotation, none = anyone can do it.
+model ChoreRotationMember {
+  choreId  String
+  userId   String
+  position Int
+
+  chore Chore @relation(fields: [choreId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([choreId, userId])
+}
+
+/// One concrete due date of a chore and who is responsible for it.
+model ChoreAssignment {
+  id          String           @id @default(cuid())
+  householdId String
+  choreId     String
+  dueDate     DateTime         @db.Date
+  assigneeId  String?
+  status      AssignmentStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  household  Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  chore      Chore            @relation(fields: [choreId], references: [id], onDelete: Cascade)
+  assignee   User?            @relation(fields: [assigneeId], references: [id], onDelete: SetNull)
+  completion ChoreCompletion?
+
+  @@unique([choreId, dueDate])
+  @@index([householdId, dueDate])
+  @@index([assigneeId, status])
+}
+
+model ChoreCompletion {
+  id            String   @id @default(cuid())
+  assignmentId  String   @unique
+  completedById String
+  /// Points actually awarded, fixed at the time of completion.
+  points        Int      @default(0)
+  completedAt   DateTime @default(now())
+
+  assignment  ChoreAssignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  completedBy User            @relation(fields: [completedById], references: [id])
+
+  @@index([completedById])
+}
+
+model ShoppingItem {
+  id          String           @id @default(cuid())
+  householdId String
+  name        String
+  quantity    Decimal?         @db.Decimal(10, 2)
+  unit        String?
+  category    ShoppingCategory @default(OTHER)
+  note        String?
+  /// For the person who added it, rather than for the whole WG.
+  personal    Boolean          @default(false)
+  status      ShoppingStatus   @default(PENDING)
+  /// The expense created when it was bought with a price.
+  expenseId   String?          @unique
+  createdById String
+  boughtById  String?
+  boughtAt    DateTime?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy User      @relation("ShoppingCreatedBy", fields: [createdById], references: [id])
+  boughtBy  User?     @relation("ShoppingBoughtBy", fields: [boughtById], references: [id])
+  expense   Expense?  @relation(fields: [expenseId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, status])
+}
+
+model CalendarEvent {
+  id          String        @id @default(cuid())
+  householdId String
+  title       String
+  description String?
+  category    EventCategory @default(WG)
+  /// Instants in UTC. All-day events start at local midnight of their first day.
+  startsAt    DateTime
+  endsAt      DateTime?
+  allDay      Boolean       @default(false)
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  household    Household                  @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  createdBy    User                       @relation(fields: [createdById], references: [id])
+  participants CalendarEventParticipant[]
+
+  @@index([householdId, startsAt])
+}
+
+model CalendarEventParticipant {
+  eventId String
+  userId  String
+
+  event CalendarEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  householdId String
+  authorId    String
+  content     String
+  color       NoteColor @default(DEFAULT)
+  pinned      Boolean   @default(false)
+  archivedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  author    User      @relation(fields: [authorId], references: [id])
+
+  @@index([householdId, archivedAt, createdAt])
+}
+
+/// All money is stored as integer euro cents.
+model Expense {
+  id          String    @id @default(cuid())
+  householdId String
+  description String
+  amountCents Int
+  paidById    String
+  date        DateTime  @db.Date
+  splitMode   SplitMode @default(EQUAL)
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  household    Household            @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  paidBy       User                 @relation("ExpensePaidBy", fields: [paidById], references: [id])
+  createdBy    User                 @relation("ExpenseCreatedBy", fields: [createdById], references: [id])
+  participants ExpenseParticipant[]
+  shoppingItem ShoppingItem?
+
+  @@index([householdId, date])
+}
+
+model ExpenseParticipant {
+  expenseId  String
+  userId     String
+  shareCents Int
+
+  expense Expense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@id([expenseId, userId])
+}
+
+model ExpenseSettlement {
+  id          String   @id @default(cuid())
+  householdId String
+  fromUserId  String
+  toUserId    String
+  amountCents Int
+  date        DateTime @db.Date
+  note        String?
+  kind        SettlementKind @default(PAYMENT)
+  /// How many beers settled it, for kind BEER.
+  beers       Int?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  fromUser  User      @relation("SettlementFrom", fields: [fromUserId], references: [id])
+  toUser    User      @relation("SettlementTo", fields: [toUserId], references: [id])
+  createdBy User      @relation("SettlementCreatedBy", fields: [createdById], references: [id])
+
+  @@index([householdId, date])
+}
+
+/// A creditor would rather have beer. The debt stands until they confirm receiving it.
+model BeerRequest {
+  id          String   @id @default(cuid())
+  householdId String
+  fromUserId  String
+  toUserId    String
+  amountCents Int
+  beers       Int
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  fromUser  User      @relation("BeerFrom", fields: [fromUserId], references: [id])
+  toUser    User      @relation("BeerTo", fields: [toUserId], references: [id])
+
+  @@unique([householdId, fromUserId, toUserId])
+}
+
+/// One magnet: someone emptied the dishwasher.
+model DishwasherEntry {
+  id          String   @id @default(cuid())
+  householdId String
+  userId      String
+  cycle       Int
+  createdAt   DateTime @default(now())
+
+  household Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([householdId, cycle])
+}
+
+/// A finished round: who got the crown and who did nothing.
+model DishwasherCycle {
+  id          String   @id @default(cuid())
+  householdId String
+  number      Int
+  winnerId    String
+  finishedAt  DateTime @default(now())
+
+  household Household          @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  winner    User               @relation(fields: [winnerId], references: [id])
+  strikes   DishwasherStrike[]
+
+  @@unique([householdId, number])
+}
+
+model DishwasherStrike {
+  cycleId String
+  userId  String
+  /// Points this strike took away.
+  points  Int    @default(10)
+
+  cycle DishwasherCycle @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  user  User            @relation(fields: [userId], references: [id])
+
+  @@id([cycleId, userId])
+}

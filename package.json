@@ -1,0 +1,13 @@
+{
+  "name": "wg-hub",
+  "private": true,
+  "version": "1.0.0",
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "dev": "npm run dev -w backend & npm run dev -w frontend & wait",
+    "db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d db",
+    "build": "npm run build -w backend && npm run build -w frontend",
+    "test": "npm test -w backend && npm test -w frontend",
+    "seed": "npm run seed -w backend"
+  }
+}
